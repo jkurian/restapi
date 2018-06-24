@@ -58,6 +58,22 @@ func createBook(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/jsom")
+	params := mux.Vars(r)
+	for index, item := range books {
+		if item.ID == params["ID"] {
+			//Remove book to update
+			books := append(books[:index], books[index+1:]...)
+			//Create updated book
+			var book Book
+			_ = json.NewDecoder(r.Body).Decode(&book)
+			book.ID = strconv.Itoa(rand.Intn(10000000)) //Mock ID --> Not safe
+			books = append(books, book)
+			json.NewEncoder(w).Encode(book)
+			return
+		}
+	}
+	json.NewEncoder(w).Encode(books)
 }
 
 func deleteBook(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +81,9 @@ func deleteBook(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	for index, item := range books {
 		if item.ID == params["ID"] {
+			//Delete book
 			books := append(books[:index], books[index+1:]...)
+			json.NewEncoder(w).Encode(books)
 			break
 		}
 	}
