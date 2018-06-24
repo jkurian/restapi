@@ -32,7 +32,17 @@ func getBooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func getBook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/jsom")
+	params := mux.Vars(r)
 
+	for _, item := range books {
+		if item.ID == params["id"] {
+			json.NewEncoder(w).Encode(item)
+			return
+		}
+	}
+	//If book is not found, we reutn an empty book struct
+	json.NewEncoder(w).Encode(&Book{})
 }
 
 func createBook(w http.ResponseWriter, r *http.Request) {
