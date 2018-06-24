@@ -28,23 +28,30 @@ type Author struct {
 var books []Book
 
 //Handlers
-func getBooks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(books)
-}
+func booksHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(books)
+		break
+	case "POST":
+		w.Header().Set("Content-Type", "application/jsom")
+		params := mux.Vars(r)
 
-func getBook(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/jsom")
-	params := mux.Vars(r)
-
-	for _, item := range books {
-		if item.ID == params["id"] {
-			json.NewEncoder(w).Encode(item)
-			return
+		for _, item := range books {
+			if item.ID == params["id"] {
+				json.NewEncoder(w).Encode(item)
+				return
+			}
 		}
+		//If book is not found, we reutn an empty book struct
+		json.NewEncoder(w).Encode(&Book{})
+		break
+	default:
+		//@TODO - Send a proper error request
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(&Book{})
 	}
-	//If book is not found, we reutn an empty book struct
-	json.NewEncoder(w).Encode(&Book{})
 }
 
 func bookHandler(w http.ResponseWriter, r *http.Request) {
@@ -108,8 +115,7 @@ func main() {
 	books = append(books, Book{ID: "2", Isbn: "44382", Title: "Macbeth", Author: &Author{Firstname: "William", Lastname: "Shakespeare"}})
 
 	//Route hanlders / End points
-	r.HandleFunc("/api/books", getBooks).Methods("GET")
-	r.HandleFunc("/api/books", createBook).Methods("POST")
+	r.HandleFunc("/api/books", booksHandler).Methods("GET", "POST")
 	r.HandleFunc("/api/book/{id}", bookHandler).Methods("GET", "PUT", "DELETE")
 
 	log.Fatal(http.ListenAndServe(":8000", r))
