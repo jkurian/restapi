@@ -110,9 +110,7 @@ func main() {
 	//Route hanlders / End points
 	r.HandleFunc("/api/books", getBooks).Methods("GET")
 	r.HandleFunc("/api/books", createBook).Methods("POST")
-	r.HandleFunc("/api/book/{id}", bookHandler).Methods("GET")
-	r.HandleFunc("/api/books/{id}", bookHandler).Methods("PUT")
-	r.HandleFunc("/api/books/{id}", bookHandler).Methods("DELETE")
+	r.HandleFunc("/api/book/{id}", bookHandler).Methods("GET", "PUT", "DELETE")
 
 	log.Fatal(http.ListenAndServe(":8000", r))
 }
