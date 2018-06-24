@@ -47,47 +47,57 @@ func getBook(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(&Book{})
 }
 
-func createBook(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func bookHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		w.Header().Set("Content-Type", "application/jsom")
+		params := mux.Vars(r)
 
-	var book Book
-	_ = json.NewDecoder(r.Body).Decode(&book)
-	book.ID = strconv.Itoa(rand.Intn(10000000)) //Mock ID --> Not safe
-	books = append(books, book)
-	json.NewEncoder(w).Encode(book)
-}
-
-func updateBook(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/jsom")
-	params := mux.Vars(r)
-	for index, item := range books {
-		if item.ID == params["ID"] {
-			//Remove book to update
-			books := append(books[:index], books[index+1:]...)
-			//Create updated book
-			var book Book
-			_ = json.NewDecoder(r.Body).Decode(&book)
-			book.ID = strconv.Itoa(rand.Intn(10000000)) //Mock ID --> Not safe
-			books = append(books, book)
-			json.NewEncoder(w).Encode(book)
-			return
+		for _, item := range books {
+			if item.ID == params["id"] {
+				json.NewEncoder(w).Encode(item)
+				return
+			}
 		}
-	}
-	json.NewEncoder(w).Encode(books)
-}
-
-func deleteBook(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(r)
-	for index, item := range books {
-		if item.ID == params["ID"] {
-			//Delete book
-			books := append(books[:index], books[index+1:]...)
-			json.NewEncoder(w).Encode(books)
-			break
+		//If book is not found, we reutn an empty book struct
+		json.NewEncoder(w).Encode(&Book{})
+		break
+	case "PUT":
+		w.Header().Set("Content-Type", "application/jsom")
+		params := mux.Vars(r)
+		for index, item := range books {
+			if item.ID == params["ID"] {
+				//Remove book to update
+				books := append(books[:index], books[index+1:]...)
+				//Create updated book
+				var book Book
+				_ = json.NewDecoder(r.Body).Decode(&book)
+				book.ID = strconv.Itoa(rand.Intn(10000000)) //Mock ID --> Not safe
+				books = append(books, book)
+				json.NewEncoder(w).Encode(book)
+				return
+			}
 		}
+		json.NewEncoder(w).Encode(books)
+		break
+	case "DELETE":
+		w.Header().Set("Content-Type", "application/json")
+		params := mux.Vars(r)
+		for index, item := range books {
+			if item.ID == params["ID"] {
+				//Delete book
+				books := append(books[:index], books[index+1:]...)
+				json.NewEncoder(w).Encode(books)
+				break
+			}
+		}
+		json.NewEncoder(w).Encode(books)
+		break
+	default:
+		//@TODO - Send a proper error request
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(&Book{})
 	}
-	json.NewEncoder(w).Encode(books)
 }
 
 func main() {
@@ -99,10 +109,10 @@ func main() {
 
 	//Route hanlders / End points
 	r.HandleFunc("/api/books", getBooks).Methods("GET")
-	r.HandleFunc("/api/book/{id}", getBook).Methods("GET")
 	r.HandleFunc("/api/books", createBook).Methods("POST")
-	r.HandleFunc("/api/books/{id}", updateBook).Methods("PUT")
-	r.HandleFunc("/api/books/{id}", deleteBook).Methods("DELETE")
+	r.HandleFunc("/api/book/{id}", bookHandler).Methods("GET")
+	r.HandleFunc("/api/books/{id}", bookHandler).Methods("PUT")
+	r.HandleFunc("/api/books/{id}", bookHandler).Methods("DELETE")
 
 	log.Fatal(http.ListenAndServe(":8000", r))
 }
