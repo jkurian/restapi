@@ -6,11 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -44,9 +42,6 @@ type Author struct {
 	Lastname  string `json:"lastname"`
 }
 
-// Init books var as slice book struct
-var books []Book
-
 //Handlers
 func booksHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -67,20 +62,30 @@ func booksHandler(w http.ResponseWriter, r *http.Request) {
 			book.Author = &author
 			books = append(books, book)
 		}
-		json.NewEncoder(w).Encode(books)
+		errEncode := json.NewEncoder(w).Encode(books)
+		if errEncode != nil {
+			log.Fatal(errEncode.Error())
+		}
 		break
 	case "POST":
-		w.Header().Set("Content-Type", "application/jsom")
-		params := mux.Vars(r)
+		w.Header().Set("Content-Type", "application/json")
 
-		for _, item := range books {
-			if item.ID == params["id"] {
-				json.NewEncoder(w).Encode(item)
-				return
-			}
+		var book Book
+		_ = json.NewDecoder(r.Body).Decode(&book)
+		var authorID int
+		//@TODO - Handle error here / update query
+		db.QueryRow("INSERT INTO authors (firstname, lastname) VALUES ($1, $2) ON CONFLICT(firstname, lastname) DO UPDATE SET firstname=EXCLUDED.firstname RETURNING id;", book.Author.Firstname, book.Author.Lastname).Scan(&authorID)
+
+		fmt.Print(authorID)
+		_, errInsertBook := db.Exec("INSERT INTO books (isbn, title, author) VALUES ($1, $2, $3);", book.Isbn, book.Title, authorID)
+		if errInsertBook != nil {
+			log.Fatal(errInsertBook.Error())
 		}
-		//If book is not found, we reutn an empty book struct
-		json.NewEncoder(w).Encode(&Book{})
+
+		errEncode := json.NewEncoder(w).Encode(book)
+		if errEncode != nil {
+			log.Fatal(errEncode.Error())
+		}
 		break
 	default:
 		//@TODO - Send a proper error request
@@ -119,33 +124,38 @@ func bookHandler(w http.ResponseWriter, r *http.Request) {
 	case "PUT":
 		w.Header().Set("Content-Type", "application/jsom")
 		params := mux.Vars(r)
-		for index, item := range books {
-			if item.ID == params["ID"] {
-				//Remove book to update
-				books := append(books[:index], books[index+1:]...)
-				//Create updated book
-				var book Book
-				_ = json.NewDecoder(r.Body).Decode(&book)
-				book.ID = strconv.Itoa(rand.Intn(10000000)) //Mock ID --> Not safe
-				books = append(books, book)
-				json.NewEncoder(w).Encode(book)
-				return
-			}
+
+		row := db.QueryRow("SELECT b.id, b.isbn, b.title, a.firstname, a.lastname FROM books as b WHERE b.id = $1;", params["id"])
+
+		var book Book
+		var authorID int
+		err := row.Scan(&book.ID, &book.Isbn, &book.Title, &authorID)
+		if err != nil {
+			log.Fatal(err.Error())
 		}
-		json.NewEncoder(w).Encode(books)
+
+		_, errInsertBook := db.Exec("UPDATE books (isbn, title, author) VALUES ($1, $2, $3) WHERE id = $4;", book.Isbn, book.Title, authorID, params["id"])
+		if errInsertBook != nil {
+			log.Fatal(errInsertBook.Error())
+			json.NewEncoder(w).Encode(&Book{})
+		}
+
+		errWrite := json.NewEncoder(w).Encode(book)
+		if errWrite != nil {
+			log.Fatal(errWrite.Error())
+		}
 		break
 	case "DELETE":
 		w.Header().Set("Content-Type", "application/json")
 		params := mux.Vars(r)
-		for index, item := range books {
-			if item.ID == params["ID"] {
-				//Delete book
-				books := append(books[:index], books[index+1:]...)
-				json.NewEncoder(w).Encode(books)
-				break
-			}
+
+		_, err := db.Query("DELETE FROM books WHERE id = $1;", params["id"])
+		if err != nil {
+			log.Fatal(err.Error())
 		}
-		json.NewEncoder(w).Encode(books)
+
+		//@TODO - Send back proper response on delete
+		json.NewEncoder(w).Encode(&Book{})
 		break
 	default:
 		//@TODO - Send a proper error request
@@ -164,10 +174,6 @@ func main() {
 	flag.Parse()
 
 	r := mux.NewRouter()
-
-	//Mock data @todo - implement DB
-	books = append(books, Book{ID: "1", Isbn: "12345", Title: "Harry Potter and the Goblet of Fire", Author: &Author{Firstname: "Joanne", Lastname: "Rowling"}})
-	books = append(books, Book{ID: "2", Isbn: "44382", Title: "Macbeth", Author: &Author{Firstname: "William", Lastname: "Shakespeare"}})
 
 	//Route hanlders / End points
 	r.HandleFunc("/api/books", booksHandler).Methods("GET", "POST")
