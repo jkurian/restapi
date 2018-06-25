@@ -42,6 +42,7 @@ type Author struct {
 	Lastname  string `json:"lastname"`
 }
 
+//@TODO - Look at all / update queries
 //Handlers
 func booksHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
