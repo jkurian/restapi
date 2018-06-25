@@ -56,6 +56,7 @@ func booksHandler(w http.ResponseWriter, r *http.Request) {
 		var books []Book
 
 		rows, err := db.Query("SELECT b.id, b.isbn, b.title, a.firstname, a.lastname FROM books as b INNER JOIN authors a on b.author = a.id;")
+		fmt.Print(rows)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
@@ -91,17 +92,29 @@ func booksHandler(w http.ResponseWriter, r *http.Request) {
 func bookHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		w.Header().Set("Content-Type", "application/jsom")
+		w.Header().Set("Content-Type", "application/json")
 		params := mux.Vars(r)
-
-		for _, item := range books {
-			if item.ID == params["id"] {
-				json.NewEncoder(w).Encode(item)
-				return
-			}
+		if err != nil {
+			log.Fatal(err.Error())
 		}
-		//If book is not found, we reutn an empty book struct
-		json.NewEncoder(w).Encode(&Book{})
+
+		row := db.QueryRow("SELECT b.id, b.isbn, b.title, a.firstname, a.lastname FROM books as b INNER JOIN authors a on b.author = a.id WHERE b.id = $1;", params["id"])
+
+		var book Book
+		var author Author
+
+		err := row.Scan(&book.ID, &book.Isbn, &book.Title, &author.Firstname, &author.Lastname)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
+		book.Author = &author
+		errWrite := json.NewEncoder(w).Encode(book)
+
+		if errWrite != nil {
+			log.Fatal(errWrite.Error())
+			json.NewEncoder(w).Encode(&Book{})
+		}
 		break
 	case "PUT":
 		w.Header().Set("Content-Type", "application/jsom")
