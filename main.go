@@ -18,6 +18,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+//@Todo implement DB migrations
 // DB connection
 const (
 	dbUser     = "jerrykurian"
