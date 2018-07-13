@@ -21,9 +21,9 @@ import (
 //@Todo implement DB migrations
 // DB connection
 const (
-	dbUser     = "YOUR_DB_USER"
-	dbPassword = "YOUR_DB_PASS"
-	dbName     = "YOUR_DB_NAME"
+	dbUser     = "<YOUR_DB_USERNAME>"
+	dbPassword = "<YOUR_DB_PASSWORD>"
+	dbName     = "<YOUR_DB_NAME>"
 )
 
 var dbinfo = fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", dbUser, dbPassword, dbName)
